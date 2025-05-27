@@ -51,7 +51,7 @@ exports.getStream = async (req, res) => {
 
 // Create a new stream
 exports.createStream = async (req, res) => {
-  const { platform, stream_key, stream_url, source_type, source_url, scheduled_at } = req.body;
+  const { platform, stream_key, stream_url, source_type, source_url, scheduled_at, loop_enabled } = req.body;
 
   try {
     // Validate platform
@@ -70,9 +70,7 @@ exports.createStream = async (req, res) => {
       if (!fs.existsSync(videoPath)) {
         return res.status(400).json({ message: 'Uploaded video file not found' });
       }
-    }
-
-    // Create new stream
+    }    // Create new stream
     const newStream = await Stream.create({
       user_id: req.user.id,
       platform: platform.toLowerCase(),
@@ -81,7 +79,8 @@ exports.createStream = async (req, res) => {
       source_type,
       source_url,
       status: 'inactive',
-      scheduled_at: scheduled_at || null
+      scheduled_at: scheduled_at || null,
+      loop_enabled: loop_enabled || false
     });
 
     res.json(newStream);

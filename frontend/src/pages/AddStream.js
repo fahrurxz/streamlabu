@@ -3,14 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { createStream, uploadVideo } from '../services/api';
 import { toast } from 'react-toastify';
 
-const AddStream = () => {
-  const [formData, setFormData] = useState({
+const AddStream = () => {  const [formData, setFormData] = useState({
     platform: 'youtube',
     stream_key: '',
     stream_url: '',
     source_type: 'upload_video',
     source_url: '',
-    scheduled_at: ''
+    scheduled_at: '',
+    loop_enabled: false
   });
   const [videoFile, setVideoFile] = useState(null);
   const [isUploadingVideo, setIsUploadingVideo] = useState(false);
@@ -18,10 +18,13 @@ const AddStream = () => {
 
   const navigate = useNavigate();
 
-  const { platform, stream_key, stream_url, source_type, source_url, scheduled_at } = formData;
-
+  const { platform, stream_key, stream_url, source_type, source_url, scheduled_at, loop_enabled } = formData;
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value, type, checked } = e.target;
+    setFormData({ 
+      ...formData, 
+      [name]: type === 'checkbox' ? checked : value 
+    });
   };
 
   const handleSourceTypeChange = (e) => {
@@ -261,8 +264,7 @@ const AddStream = () => {
                   </div>
                 </div>
               )}
-              
-              <div className="mb-3">
+                <div className="mb-3">
                 <label htmlFor="scheduled_at" className="form-label">
                   Schedule Stream (Optional)
                 </label>
@@ -278,6 +280,28 @@ const AddStream = () => {
                   Schedule the stream for a future time (optional)
                 </div>
               </div>
+              
+              {source_type === 'upload_video' && (
+                <div className="mb-3">
+                  <div className="form-check">
+                    <input
+                      className="form-check-input"
+                      type="checkbox"
+                      id="loop_enabled"
+                      name="loop_enabled"
+                      checked={loop_enabled}
+                      onChange={handleChange}
+                    />
+                    <label className="form-check-label" htmlFor="loop_enabled">
+                      <i className="fas fa-repeat me-2"></i>
+                      Loop video continuously
+                    </label>
+                  </div>
+                  <div className="form-text">
+                    When enabled, the video will loop infinitely until the stream is stopped
+                  </div>
+                </div>
+              )}
 
               <div className="d-flex gap-2 mt-4">
                 <button

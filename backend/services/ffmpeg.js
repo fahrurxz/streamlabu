@@ -8,11 +8,10 @@ class FFmpegService {
     // Set ffmpeg path if using a specific binary location
     // ffmpeg.setFfmpegPath('/path/to/ffmpeg');
   }
-
   // Start an FFmpeg process for streaming
   async startFFmpegProcess(stream) {
     try {
-      const { source_type, source_url, stream_url, stream_key, platform } = stream;
+      const { source_type, source_url, stream_url, stream_key, platform, loop_enabled } = stream;
       
       const rtmpDestination = `${stream_url}/${stream_key}`;
       let ffmpegArgs = [];
@@ -23,7 +22,7 @@ class FFmpegService {
           throw new Error(`Video file not found: ${source_url}`);
         }
         
-        ffmpegArgs = this.getCommandForVideoFile(source_url, rtmpDestination, platform);
+        ffmpegArgs = this.getCommandForVideoFile(source_url, rtmpDestination, platform, loop_enabled);
       } else if (source_type === 'live_capture') {
         // For live capture from another stream
         ffmpegArgs = this.getCommandForLiveCapture(source_url, rtmpDestination, platform);
@@ -55,11 +54,17 @@ class FFmpegService {
       return null;
     }
   }
-
   // Get FFmpeg command args for video file source
-  getCommandForVideoFile(videoPath, rtmpDestination, platform) {
+  getCommandForVideoFile(videoPath, rtmpDestination, platform, loopEnabled = false) {
     // Basic command for re-streaming a video file to RTMP
-    const args = [
+    const args = [];
+    
+    // Add loop parameter if enabled (for video files only)
+    if (loopEnabled) {
+      args.push('-stream_loop', '-1');  // Loop infinitely
+    }
+    
+    args.push(
       '-re',                    // Read input at native frame rate
       '-i', videoPath,          // Input file
       '-c:v', 'libx264',        // Video codec
@@ -74,7 +79,7 @@ class FFmpegService {
       '-ar', '44100',           // Audio sample rate
       '-f', 'flv',              // Output format
       rtmpDestination           // RTMP destination
-    ];
+    );
     
     // Platform-specific optimizations
     if (platform === 'youtube') {

@@ -46,10 +46,14 @@ const Stream = sequelize.define('stream', {
   created_at: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW
-  },
-  scheduled_at: {
+  },  scheduled_at: {
     type: DataTypes.DATE,
     allowNull: true
+  },
+  loop_enabled: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    allowNull: false
   }
 }, {
   timestamps: false

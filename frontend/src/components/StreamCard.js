@@ -3,7 +3,7 @@ import { startStream, stopStream, deleteStream } from '../services/api';
 import { toast } from 'react-toastify';
 
 const StreamCard = ({ stream, refreshStreams }) => {
-  const { id, platform, stream_key, stream_url, source_type, source_url, status } = stream;
+  const { id, platform, stream_key, stream_url, source_type, source_url, status, loop_enabled } = stream;
   const [isLoading, setIsLoading] = useState(false);
 
   // Handle starting a stream
@@ -98,13 +98,17 @@ const StreamCard = ({ stream, refreshStreams }) => {
         <div>
           <span className={`badge ${getBadgeClass(platform)} me-2`}>
             {platform.toUpperCase()}
-          </span>
-          <span className={`badge ${status === 'active' ? 'bg-success' : 'bg-secondary'} me-2`}>
+          </span>          <span className={`badge ${status === 'active' ? 'bg-success' : 'bg-secondary'} me-2`}>
             {status.toUpperCase()}
           </span>
-          <span className={`badge ${getSourceBadgeClass(source_type)}`}>
+          <span className={`badge ${getSourceBadgeClass(source_type)} me-2`}>
             {source_type === 'live_capture' ? 'CAPTURE' : 'VIDEO'}
           </span>
+          {source_type === 'upload_video' && loop_enabled && (
+            <span className="badge bg-info">
+              <i className="fas fa-repeat me-1"></i>LOOP
+            </span>
+          )}
         </div>
       </div>
       
@@ -123,11 +127,18 @@ const StreamCard = ({ stream, refreshStreams }) => {
             <span className="text-muted">••••••••</span>
             {stream_key.slice(-6)}
           </div>
-        </div>
-        <div className="mb-2">
+        </div>        <div className="mb-2">
           <strong>Source:</strong> 
           <div className="text-truncate small">{formatSourceUrl(source_url)}</div>
         </div>
+        {source_type === 'upload_video' && loop_enabled && (
+          <div className="mb-2">
+            <span className="badge bg-info">
+              <i className="fas fa-repeat me-1"></i>
+              Loop enabled - Video will repeat continuously
+            </span>
+          </div>
+        )}
         
         <div className="d-grid gap-2 d-md-flex justify-content-md-end mt-3">
           {status === 'inactive' ? (
