@@ -3,7 +3,7 @@ import { startStream, stopStream, deleteStream } from '../services/api';
 import { toast } from 'react-toastify';
 
 const StreamCard = ({ stream, refreshStreams }) => {
-  const { id, platform, stream_key, stream_url, source_type, source_url, status, loop_enabled } = stream;
+  const { id, platform, stream_key, stream_url, source_type, source_url, status, loop_enabled = false } = stream;
   const [isLoading, setIsLoading] = useState(false);
 
   // Handle starting a stream

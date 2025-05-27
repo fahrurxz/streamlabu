@@ -62,15 +62,15 @@ exports.createStream = async (req, res) => {
     // Validate source type
     if (!['live_capture', 'upload_video'].includes(source_type)) {
       return res.status(400).json({ message: 'Invalid source type. Supported types are live_capture and upload_video' });
-    }
-
-    // For uploaded videos, verify file exists
+    }    // For uploaded videos, verify file exists
     if (source_type === 'upload_video' && source_url) {
       const videoPath = path.join(uploadService.videoDir, path.basename(source_url));
       if (!fs.existsSync(videoPath)) {
         return res.status(400).json({ message: 'Uploaded video file not found' });
       }
-    }    // Create new stream
+    }
+
+    // Create new stream
     const newStream = await Stream.create({
       user_id: req.user.id,
       platform: platform.toLowerCase(),
@@ -146,7 +146,7 @@ exports.stopStream = async (req, res) => {
 
 // Update stream details
 exports.updateStream = async (req, res) => {
-  const { platform, stream_key, stream_url, source_type, source_url, scheduled_at } = req.body;
+  const { platform, stream_key, stream_url, source_type, source_url, scheduled_at, loop_enabled } = req.body;
 
   try {
     // Check if stream exists and belongs to user
@@ -164,16 +164,15 @@ exports.updateStream = async (req, res) => {
     // Only allow updates if stream is inactive
     if (stream.status === 'active') {
       return res.status(400).json({ message: 'Cannot update active stream. Stop the stream first.' });
-    }
-
-    // Update stream details
+    }    // Update stream details
     const updatedStream = await stream.update({
       platform: platform || stream.platform,
       stream_key: stream_key || stream.stream_key,
       stream_url: stream_url || stream.stream_url,
       source_type: source_type || stream.source_type,
       source_url: source_url || stream.source_url,
-      scheduled_at: scheduled_at !== undefined ? scheduled_at : stream.scheduled_at
+      scheduled_at: scheduled_at !== undefined ? scheduled_at : stream.scheduled_at,
+      loop_enabled: loop_enabled !== undefined ? loop_enabled : stream.loop_enabled
     });
 
     res.json(updatedStream);
