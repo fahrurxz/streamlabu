@@ -56,27 +56,15 @@ class FFmpegService {
   }
   // Get FFmpeg command args for video file source
   getCommandForVideoFile(videoPath, rtmpDestination, platform, loopEnabled = false) {
-    // Basic command for re-streaming a video file to RTMP
+    // Gunakan copy codec agar tidak re-encode jika file sudah kompatibel
     const args = [];
-    
-    // Add loop parameter if enabled (for video files only)
     if (loopEnabled) {
       args.push('-stream_loop', '-1');  // Loop infinitely
     }
-    
     args.push(
       '-re',                    // Read input at native frame rate
       '-i', videoPath,          // Input file
-      '-c:v', 'libx264',        // Video codec
-      '-preset', 'veryfast',    // Encoding preset
-      '-b:v', '2500k',          // Video bitrate
-      '-maxrate', '2500k',      // Maximum bitrate
-      '-bufsize', '5000k',      // Buffer size
-      '-pix_fmt', 'yuv420p',    // Pixel format
-      '-g', '60',               // Keyframe interval
-      '-c:a', 'aac',            // Audio codec
-      '-b:a', '128k',           // Audio bitrate
-      '-ar', '44100',           // Audio sample rate
+      '-c', 'copy', // Tidak re-encode, langsung copy stream
       '-f', 'flv',              // Output format
       rtmpDestination           // RTMP destination
     );
@@ -145,4 +133,4 @@ class FFmpegService {
 
 // Create and export a singleton instance
 const ffmpegService = new FFmpegService();
-module.exports = ffmpegService; 
+module.exports = ffmpegService;
