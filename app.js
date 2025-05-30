@@ -36,7 +36,7 @@ app.use('/api/youtube', require('./backend/routes/youtube'));
 // Serve static assets in production
 if (process.env.NODE_ENV === 'production') {
   // Set static folder
-  app.use(express.static('frontend/build'));
+  app.use(express.static(path.join(__dirname, 'frontend', 'build')));
 
   app.get('*', (req, res) => {
     res.sendFile(path.resolve(__dirname, 'frontend', 'build', 'index.html'));
@@ -55,4 +55,4 @@ app.listen(PORT, () => {
   console.log('RTMP server running on port 1935');
 });
 
-module.exports = app; 
+module.exports = app;
