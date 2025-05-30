@@ -53,59 +53,35 @@ class FFmpegService {
       console.error('Error in startFFmpegProcess:', error);
       return null;
     }
-  }
-  // Get FFmpeg command args for video file source
+  }  // Get FFmpeg command args for video file source
   getCommandForVideoFile(videoPath, rtmpDestination, platform, loopEnabled = false) {
     // Gunakan copy codec agar tidak re-encode jika file sudah kompatibel
     const args = [];
+    
+    // Stream loop harus berada sebelum -re dan -i
     if (loopEnabled) {
       args.push('-stream_loop', '-1');  // Loop infinitely
     }
+    
     args.push(
       '-re',                    // Read input at native frame rate
       '-i', videoPath,          // Input file
-      '-c', 'copy', // Tidak re-encode, langsung copy stream
+      '-c', 'copy',             // Tidak re-encode, langsung copy stream
       '-f', 'flv',              // Output format
       rtmpDestination           // RTMP destination
     );
     
-    // Platform-specific optimizations
-    if (platform === 'youtube') {
-      // YouTube recommendation
-      args.splice(args.indexOf('-b:v') + 1, 1, '4000k');
-    } else if (platform === 'tiktok') {
-      // TikTok recommendation (vertical video)
-      args.splice(args.indexOf('-preset') + 2, 0, '-vf', 'scale=720:1280');
-    }
-    
     return args;
   }
-
   // Get FFmpeg command args for live capture source
   getCommandForLiveCapture(sourceUrl, rtmpDestination, platform) {
     // Basic command for re-streaming from a live source to RTMP
     const args = [
       '-i', sourceUrl,          // Input URL
-      '-c:v', 'libx264',        // Video codec
-      '-preset', 'veryfast',    // Encoding preset
-      '-b:v', '2500k',          // Video bitrate
-      '-maxrate', '2500k',      // Maximum bitrate
-      '-bufsize', '5000k',      // Buffer size
-      '-pix_fmt', 'yuv420p',    // Pixel format
-      '-g', '60',               // Keyframe interval
-      '-c:a', 'aac',            // Audio codec
-      '-b:a', '128k',           // Audio bitrate
-      '-ar', '44100',           // Audio sample rate
+      '-c', 'copy',             // Copy codec (no re-encoding)
       '-f', 'flv',              // Output format
       rtmpDestination           // RTMP destination
     ];
-    
-    // Platform-specific optimizations (same as video file source)
-    if (platform === 'youtube') {
-      args.splice(args.indexOf('-b:v') + 1, 1, '4000k');
-    } else if (platform === 'tiktok') {
-      args.splice(args.indexOf('-preset') + 2, 0, '-vf', 'scale=720:1280');
-    }
     
     return args;
   }
