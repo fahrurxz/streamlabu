@@ -1,24 +1,44 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { createStream, uploadVideo } from '../services/api';
+import { createStream, getUploadedVideos } from '../services/api';
 import { toast } from 'react-toastify';
 
-const AddStream = () => {  const [formData, setFormData] = useState({
+const AddStream = () => {
+  const [formData, setFormData] = useState({
     platform: 'youtube',
     stream_key: '',
     stream_url: '',
     source_type: 'upload_video',
     source_url: '',
+    video_id: '', // New field for selected video
     scheduled_at: '',
     loop_enabled: false
   });
-  const [videoFile, setVideoFile] = useState(null);
-  const [isUploadingVideo, setIsUploadingVideo] = useState(false);
+  const [uploadedVideos, setUploadedVideos] = useState([]);
+  const [isLoadingVideos, setIsLoadingVideos] = useState(false);
   const [isCreatingStream, setIsCreatingStream] = useState(false);
-
   const navigate = useNavigate();
 
-  const { platform, stream_key, stream_url, source_type, source_url, scheduled_at, loop_enabled } = formData;
+  const { platform, stream_key, stream_url, source_type, source_url, video_id, scheduled_at, loop_enabled } = formData;
+  // Load uploaded videos on component mount
+  useEffect(() => {
+    loadUploadedVideos();
+  }, []);
+
+  const loadUploadedVideos = async () => {
+    setIsLoadingVideos(true);
+    try {
+      const videos = await getUploadedVideos();
+      // Only show ready videos for stream creation
+      const readyVideos = videos.filter(video => video.status === 'ready');
+      setUploadedVideos(readyVideos);
+    } catch (error) {
+      console.error('Error loading uploaded videos:', error);
+      toast.error('Failed to load uploaded videos');
+    } finally {
+      setIsLoadingVideos(false);
+    }
+  };
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData({ 
@@ -26,46 +46,25 @@ const AddStream = () => {  const [formData, setFormData] = useState({
       [name]: type === 'checkbox' ? checked : value 
     });
   };
-
   const handleSourceTypeChange = (e) => {
     const newSourceType = e.target.value;
     setFormData({ 
       ...formData, 
       source_type: newSourceType,
-      source_url: '' // Reset source URL when type changes
+      source_url: '', // Reset source URL when type changes
+      video_id: '' // Reset video selection when type changes
     });
-    setVideoFile(null);
   };
 
-  const handleVideoFileChange = (e) => {
-    if (e.target.files && e.target.files[0]) {
-      setVideoFile(e.target.files[0]);
-    }
-  };
-
-  const handleVideoUpload = async () => {
-    if (!videoFile) {
-      toast.error('Please select a video file first');
-      return;
-    }
-
-    try {
-      setIsUploadingVideo(true);
-      const uploadResult = await uploadVideo(videoFile);
-      
-      // Set source_url to the path of the uploaded file
-      setFormData({ 
-        ...formData, 
-        source_url: uploadResult.file.path 
-      });
-      
-      toast.success('Video uploaded successfully');
-    } catch (error) {
-      toast.error(error.message || 'Failed to upload video');
-      console.error('Video upload error:', error);
-    } finally {
-      setIsUploadingVideo(false);
-    }
+  const handleVideoSelection = (e) => {
+    const selectedVideoId = e.target.value;
+    const selectedVideo = uploadedVideos.find(video => video.id.toString() === selectedVideoId);
+    
+    setFormData({
+      ...formData,
+      video_id: selectedVideoId,
+      source_url: selectedVideo ? selectedVideo.file_path : ''
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -75,10 +74,8 @@ const AddStream = () => {  const [formData, setFormData] = useState({
     if (!stream_key || !stream_url) {
       toast.error('Stream key and RTMP URL are required');
       return;
-    }
-
-    if (source_type === 'upload_video' && !source_url) {
-      toast.error('Please upload a video file first');
+    }    if (source_type === 'upload_video' && !video_id) {
+      toast.error('Please select an uploaded video');
       return;
     }
 
@@ -204,44 +201,172 @@ const AddStream = () => {  const [formData, setFormData] = useState({
                   Select the source type for your stream
                 </div>
               </div>
-              
-              {source_type === 'upload_video' ? (
+                {source_type === 'upload_video' ? (
                 <div className="mb-3">
-                  <label htmlFor="video_file" className="form-label">
-                    Video File
-                  </label>
-                  <div className="input-group">
-                    <input
-                      type="file"
-                      className="form-control"
-                      id="video_file"
-                      accept="video/*"
-                      onChange={handleVideoFileChange}
-                    />
+                  <div className="d-flex justify-content-between align-items-center mb-2">
+                    <label htmlFor="video_selection" className="form-label">
+                      Select Video
+                    </label>
                     <button
                       type="button"
-                      className="btn btn-secondary"
-                      onClick={handleVideoUpload}
-                      disabled={!videoFile || isUploadingVideo}
+                      className="btn btn-sm btn-success"
+                      onClick={() => navigate('/upload-video')}
                     >
-                      {isUploadingVideo ? (
-                        <>
-                          <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                          Uploading...
-                        </>
-                      ) : (
-                        <>Upload</>
-                      )}
+                      <i className="fas fa-plus me-1"></i>
+                      Upload New Video
                     </button>
                   </div>
-                  {source_url && (
-                    <div className="alert alert-success mt-2">
-                      <i className="fas fa-check-circle me-2"></i>
-                      Video uploaded successfully
+                  
+                  {isLoadingVideos ? (
+                    <div className="text-center py-3">
+                      <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                      Loading videos...
                     </div>
+                  ) : uploadedVideos.length === 0 ? (
+                    <div className="alert alert-info">
+                      <i className="fas fa-info-circle me-2"></i>
+                      No videos uploaded yet. 
+                      <button
+                        type="button"
+                        className="btn btn-link p-0 ms-1"
+                        onClick={() => navigate('/upload-video')}
+                      >
+                        Upload your first video
+                      </button>
+                    </div>                  ) : (
+                    <>
+                      {/* Video Selection Cards */}
+                      <div className="border rounded p-3">
+                        <div className="mb-3">
+                          <label className="form-label">Choose from your uploaded videos:</label>
+                        </div>
+                        
+                        {!video_id && (
+                          <div className="alert alert-warning">
+                            <i className="fas fa-exclamation-triangle me-2"></i>
+                            Please select a video to continue
+                          </div>
+                        )}
+                        
+                        <div className="row">
+                          {uploadedVideos.map(video => (
+                            <div key={video.id} className="col-md-6 col-lg-4 mb-3">
+                              <div 
+                                className={`card h-100 cursor-pointer ${video_id === video.id.toString() ? 'border-primary bg-primary bg-opacity-10' : 'border-light'}`}
+                                onClick={() => handleVideoSelection({ target: { value: video.id.toString() } })}
+                                style={{ cursor: 'pointer' }}
+                              >
+                                {/* Thumbnail */}
+                                <div className="position-relative">
+                                  {video.thumbnail_url ? (
+                                    <img 
+                                      src={video.thumbnail_url} 
+                                      alt={video.title}
+                                      className="card-img-top"
+                                      style={{ 
+                                        height: '120px', 
+                                        objectFit: 'cover',
+                                        backgroundColor: '#f8f9fa'
+                                      }}
+                                      onError={(e) => {
+                                        e.target.style.display = 'none';
+                                        e.target.nextSibling.style.display = 'flex';
+                                      }}
+                                    />
+                                  ) : null}
+                                  {/* Fallback when no thumbnail or image fails to load */}
+                                  {/* <div 
+                                    className="card-img-top d-flex align-items-center justify-content-center bg-light"
+                                    style={{ 
+                                      height: '120px',
+                                      display: video.thumbnail_url ? 'none' : 'flex'
+                                    }}
+                                  >
+                                    <i className="fas fa-video fa-2x text-muted"></i>
+                                  </div> */}
+                                  
+                                  {/* Selection indicator */}
+                                  {video_id === video.id.toString() && (
+                                    <div className="position-absolute top-0 start-0 m-2">
+                                      <span className="badge bg-primary">
+                                        <i className="fas fa-check me-1"></i>
+                                        Selected
+                                      </span>
+                                    </div>
+                                  )}
+                                  
+                                  {/* Duration badge */}
+                                  {video.duration && (
+                                    <span className="position-absolute bottom-0 end-0 m-2">
+                                      <span className="badge bg-dark bg-opacity-75">
+                                        {Math.floor(video.duration / 60)}:{(video.duration % 60).toString().padStart(2, '0')}
+                                      </span>
+                                    </span>
+                                  )}
+                                </div>
+                                
+                                <div className="card-body p-2">
+                                  <h6 className="card-title mb-1" style={{ fontSize: '0.9rem' }}>
+                                    {video.title}
+                                  </h6>
+                                  <small className="text-muted">
+                                    <i className="fas fa-calendar me-1"></i>
+                                    {new Date(video.created_at).toLocaleDateString()}
+                                  </small>
+                                  {video.file_size && (
+                                    <small className="text-muted d-block">
+                                      <i className="fas fa-hdd me-1"></i>
+                                      {(video.file_size / (1024 * 1024)).toFixed(1)} MB
+                                    </small>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      {video_id && (
+                        <div className="mt-2">
+                          {(() => {
+                            const selectedVideo = uploadedVideos.find(v => v.id.toString() === video_id);
+                            return selectedVideo ? (
+                              <div className="card border-success">
+                                <div className="card-body p-3">
+                                  <div className="d-flex align-items-start">
+                                    <div className="flex-grow-1">
+                                      <h6 className="card-title mb-1">{selectedVideo.title}</h6>
+                                      {selectedVideo.description && (
+                                        <p className="card-text small text-muted mb-1">{selectedVideo.description}</p>
+                                      )}
+                                      <small className="text-muted">
+                                        <i className="fas fa-calendar me-1"></i>
+                                        Uploaded: {new Date(selectedVideo.created_at).toLocaleDateString()}
+                                        {selectedVideo.file_size && (
+                                          <>
+                                            <span className="mx-2">•</span>
+                                            <i className="fas fa-hdd me-1"></i>
+                                            {(selectedVideo.file_size / (1024 * 1024)).toFixed(2)} MB
+                                          </>
+                                        )}
+                                      </small>
+                                    </div>
+                                    <span className="badge bg-success">
+                                      <i className="fas fa-check me-1"></i>
+                                      Selected
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            ) : null;
+                          })()}
+                        </div>
+                      )}
+                    </>
                   )}
+                  
                   <div className="form-text">
-                    Upload a video file to use as the stream source
+                    Select a previously uploaded video to use as the stream source
                   </div>
                 </div>
               ) : (

@@ -18,4 +18,9 @@ router.post('/login', userController.login);
 // @access  Private
 router.get('/profile', auth, userController.getProfile);
 
-module.exports = router; 
+// @route   POST api/users/refresh-token
+// @desc    Refresh JWT token
+// @access  Private
+router.post('/refresh-token', auth, userController.refreshToken);
+
+module.exports = router;

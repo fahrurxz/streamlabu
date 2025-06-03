@@ -35,16 +35,21 @@ const Dashboard = () => {
   });
 
   return (
-    <div className="dashboard">
-      <div className="d-flex justify-content-between align-items-center mb-4">
+    <div className="dashboard">      <div className="d-flex justify-content-between align-items-center mb-4">
         <h2>
           <i className="fas fa-video me-2"></i>
           My Streams
         </h2>
-        <Link to="/add-stream" className="btn btn-primary">
-          <i className="fas fa-plus-circle me-2"></i>
-          Add New Stream
-        </Link>
+        <div className="d-flex gap-2">
+          <Link to="/upload-video" className="btn btn-success">
+            <i className="fas fa-cloud-upload-alt me-2"></i>
+            Upload Video
+          </Link>
+          <Link to="/add-stream" className="btn btn-primary">
+            <i className="fas fa-plus-circle me-2"></i>
+            Add New Stream
+          </Link>
+        </div>
       </div>
 
       <div className="card mb-4">

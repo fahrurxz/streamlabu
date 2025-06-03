@@ -2,6 +2,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const ffmpegService = require('./ffmpeg');
+const thumbnailService = require('./thumbnailService');
 
 // Create uploads directory if it doesn't exist
 const uploadsDir = path.join(__dirname, '../../uploads');
@@ -53,10 +54,7 @@ const upload = multer({
 const processUploadedVideo = async (file) => {
   try {
     // Generate thumbnail
-    const thumbnailPath = await ffmpegService.generateThumbnail(
-      file.path,
-      thumbnailDir
-    );
+    const thumbnailPath = await thumbnailService.generateVideoThumbnail(file.path);
 
     return {
       filename: file.filename,
@@ -75,5 +73,5 @@ module.exports = {
   upload,
   processUploadedVideo,
   videoDir,
-  thumbnailDir
-}; 
+  thumbnailDir: thumbnailService.thumbnailDir
+};

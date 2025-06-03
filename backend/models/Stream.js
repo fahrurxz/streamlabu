@@ -34,10 +34,17 @@ const Stream = sequelize.define('stream', {
   source_type: {
     type: DataTypes.ENUM('live_capture', 'upload_video'),
     defaultValue: 'upload_video'
-  },
-  source_url: {
+  },  source_url: {
     type: DataTypes.TEXT,
     allowNull: true
+  },
+  video_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'videos', // Will be resolved when Video model is available
+      key: 'id'
+    }
   },
   status: {
     type: DataTypes.ENUM('active', 'inactive'),

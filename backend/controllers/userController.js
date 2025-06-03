@@ -99,4 +99,49 @@ exports.getProfile = async (req, res) => {
     console.error(err.message);
     res.status(500).send('Server error');
   }
-}; 
+};
+
+// Refresh JWT token
+exports.refreshToken = async (req, res) => {
+  try {
+    // The user is already authenticated via the auth middleware
+    const user = await User.findByPk(req.user.id, {
+      attributes: { exclude: ['password'] }
+    });
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Generate new JWT token
+    const payload = {
+      user: {
+        id: user.id,
+        username: user.username
+      }
+    };
+
+    jwt.sign(
+      payload,
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES_IN },
+      (err, token) => {
+        if (err) {
+          console.error('Token generation error:', err);
+          return res.status(500).json({ message: 'Failed to generate token' });
+        }
+        res.json({ 
+          token,
+          user: {
+            id: user.id,
+            username: user.username,
+            email: user.email
+          }
+        });
+      }
+    );
+  } catch (err) {
+    console.error('Refresh token error:', err.message);
+    res.status(500).send('Server error');
+  }
+};

@@ -9,7 +9,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "init-dev": "node scripts/init-dev-db.js",
     "dev-full": "npm run init-dev && npm run dev",
-    "pm2:all": "concurrently \"npm run pm2:backend\" \"npm run pm2:frontend\"",
+    "pm2:all": "concurrently -k -n BACKEND,FRONTEND -c green,blue \"npm run pm2:backend\" \"npm run pm2:frontend\"",
     "pm2:backend": "pm2 start app.js --name livestream-backend",
     "pm2:frontend": "cd frontend && pm2 start npm --name livestream-frontend -- run start"
   },
@@ -33,7 +33,7 @@
     "sequelize": "^6.30.0"
   },
   "devDependencies": {
-    "concurrently": "^8.2.0",
+    "concurrently": "^8.2.2",
     "nodemon": "^2.0.22"
   }
 }

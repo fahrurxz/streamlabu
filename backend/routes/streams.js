@@ -12,6 +12,31 @@ router.use(auth);
 // @access  Private
 router.get('/', streamController.getStreams);
 
+// @route   POST api/streams/upload-video
+// @desc    Upload a video file to use as stream source
+// @access  Private
+router.post('/upload-video', uploadService.upload.single('video'), streamController.uploadVideo);
+
+// @route   POST api/streams/upload-from-google-drive
+// @desc    Import a video from Google Drive
+// @access  Private
+router.post('/upload-from-google-drive', streamController.uploadVideoFromGoogleDrive);
+
+// @route   GET api/streams/uploaded-videos
+// @desc    Get all uploaded videos for user
+// @access  Private
+router.get('/uploaded-videos', streamController.getUploadedVideos);
+
+// @route   DELETE api/streams/uploaded-videos/:id
+// @desc    Delete an uploaded video
+// @access  Private
+router.delete('/uploaded-videos/:id', streamController.deleteUploadedVideo);
+
+// @route   GET api/streams/video-status/:id
+// @desc    Get video processing status
+// @access  Private
+router.get('/video-status/:id', streamController.getVideoStatus);
+
 // @route   GET api/streams/:id
 // @desc    Get a single stream
 // @access  Private
@@ -42,9 +67,4 @@ router.post('/:id/start', streamController.startStream);
 // @access  Private
 router.post('/:id/stop', streamController.stopStream);
 
-// @route   POST api/streams/upload-video
-// @desc    Upload a video file to use as stream source
-// @access  Private
-router.post('/upload-video', uploadService.upload.single('video'), streamController.uploadVideo);
-
-module.exports = router; 
+module.exports = router;

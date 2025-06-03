@@ -85,19 +85,21 @@ class FFmpegService {
     
     return args;
   }
-
   // Extract thumbnail from video
-  async generateThumbnail(videoPath, outputPath) {
+  async generateThumbnail(videoPath, outputPath, customFilename = null) {
     return new Promise((resolve, reject) => {
+      // Generate unique filename if not provided
+      const filename = customFilename || `thumbnail-${Date.now()}-${Math.random().toString(36).substr(2, 9)}.png`;
+      
       ffmpeg(videoPath)
         .screenshots({
           timestamps: ['00:00:02'],
-          filename: 'thumbnail.png',
+          filename: filename,
           folder: outputPath,
           size: '320x240'
         })
         .on('end', () => {
-          resolve(path.join(outputPath, 'thumbnail.png'));
+          resolve(path.join(outputPath, filename));
         })
         .on('error', (err) => {
           console.error('Error generating thumbnail:', err);
