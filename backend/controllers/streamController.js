@@ -518,3 +518,109 @@ exports.getVideoStatus = async (req, res) => {
     res.status(500).json({ message: 'Failed to get video status', error: err.message });
   }
 };
+
+// Retry failed Google Drive download
+exports.retryGoogleDriveDownload = async (req, res) => {
+  try {
+    const videoId = req.params.id;
+    
+    // Find the video record
+    const video = await Video.findOne({
+      where: {
+        id: videoId,
+        user_id: req.user.id,
+        upload_type: 'google_drive',
+        status: 'error'
+      }
+    });
+
+    if (!video) {
+      return res.status(404).json({ 
+        message: 'Video not found or not eligible for retry' 
+      });
+    }
+
+    if (!video.google_drive_link) {
+      return res.status(400).json({ 
+        message: 'No Google Drive link found for this video' 
+      });
+    }
+
+    // Reset video status to processing
+    await Video.update({
+      status: 'processing',
+      error_message: null,
+      file_path: video.google_drive_link, // Reset to original link
+      file_size: null,
+      duration: null,
+      thumbnail_path: null
+    }, {
+      where: { id: videoId }
+    });
+
+    // Send immediate response
+    res.json({
+      message: 'Retry initiated. The video download is being restarted.',
+      video: {
+        id: video.id,
+        title: video.title,
+        status: 'processing'
+      }
+    });
+
+    // Process the download asynchronously
+    processGoogleDriveDownload(videoId, video.google_drive_link, req.user.id, video.title);
+
+  } catch (err) {
+    console.error('Retry Google Drive download error:', err.message);
+    res.status(500).json({ message: 'Failed to retry download', error: err.message });
+  }
+};
+
+// Validate Google Drive link
+exports.validateGoogleDriveLink = async (req, res) => {
+  try {
+    const { googleDriveLink } = req.body;
+
+    if (!googleDriveLink) {
+      return res.status(400).json({ 
+        message: 'Google Drive link is required' 
+      });
+    }
+
+    // Validate URL format
+    if (!googleDriveService.isValidGoogleDriveUrl(googleDriveLink)) {
+      return res.status(400).json({
+        valid: false,
+        message: 'Invalid Google Drive URL format'
+      });
+    }
+
+    // Extract file ID
+    const fileId = googleDriveService.extractFileId(googleDriveLink);
+    if (!fileId) {
+      return res.status(400).json({
+        valid: false,
+        message: 'Could not extract file ID from Google Drive link'
+      });
+    }
+
+    // Check accessibility
+    const accessCheck = await googleDriveService.checkFileAccessibility(fileId);
+    
+    res.json({
+      valid: accessCheck.accessible,
+      fileId: fileId,
+      message: accessCheck.accessible ? accessCheck.message : accessCheck.error,
+      fileSize: accessCheck.fileSize || null
+    });
+
+  } catch (err) {
+    console.error('Validate Google Drive link error:', err.message);
+    res.status(500).json({ 
+      valid: false,
+      message: 'Failed to validate Google Drive link', 
+      error: err.message 
+    });
+  }
+};

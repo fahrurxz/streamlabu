@@ -22,10 +22,20 @@ router.post('/upload-video', uploadService.upload.single('video'), streamControl
 // @access  Private
 router.post('/upload-from-google-drive', streamController.uploadVideoFromGoogleDrive);
 
+// @route   POST api/streams/validate-google-drive-link
+// @desc    Validate Google Drive link before upload
+// @access  Private
+router.post('/validate-google-drive-link', streamController.validateGoogleDriveLink);
+
 // @route   GET api/streams/uploaded-videos
 // @desc    Get all uploaded videos for user
 // @access  Private
 router.get('/uploaded-videos', streamController.getUploadedVideos);
+
+// @route   POST api/streams/uploaded-videos/:id/retry
+// @desc    Retry failed Google Drive download
+// @access  Private
+router.post('/uploaded-videos/:id/retry', streamController.retryGoogleDriveDownload);
 
 // @route   DELETE api/streams/uploaded-videos/:id
 // @desc    Delete an uploaded video

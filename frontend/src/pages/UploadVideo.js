@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { uploadVideo, uploadVideoFromGoogleDrive, getUploadedVideos, deleteUploadedVideo, getVideoStatus } from '../services/api';
+import { uploadVideo, uploadVideoFromGoogleDrive, getUploadedVideos, deleteUploadedVideo, getVideoStatus, retryGoogleDriveDownload, validateGoogleDriveLink } from '../services/api';
 import { toast } from 'react-toastify';
 
 const UploadVideo = () => {
@@ -18,11 +18,21 @@ const UploadVideo = () => {
   const [isDeletingVideo, setIsDeletingVideo] = useState(null);
   const [activeTab, setActiveTab] = useState('upload'); // 'upload' or 'manage'
 
-  const navigate = useNavigate();
+  // Google Drive validation state
+  const [isValidatingLink, setIsValidatingLink] = useState(false);
+  const [linkValidation, setLinkValidation] = useState(null);
 
+  const navigate = useNavigate();
   // Load uploaded videos on component mount
   useEffect(() => {
     loadUploadedVideos();
+    
+    // Cleanup function to clear timeout on unmount
+    return () => {
+      if (handleGoogleDriveLinkChange.timeoutId) {
+        clearTimeout(handleGoogleDriveLinkChange.timeoutId);
+      }
+    };
   }, []);
 
   // Auto-refresh for processing videos
@@ -84,7 +94,6 @@ const UploadVideo = () => {
       setIsDeletingVideo(null);
     }
   };
-
   const handleRetryGoogleDriveDownload = async (videoId) => {
     if (!window.confirm('Retry downloading this video from Google Drive?')) {
       return;
@@ -92,24 +101,8 @@ const UploadVideo = () => {
 
     setIsDeletingVideo(videoId); // Reuse the loading state
     try {
-      // Find the video to get its Google Drive link
-      const video = uploadedVideos.find(v => v.id === videoId);
-      if (!video || !video.google_drive_link) {
-        throw new Error('Video information not found');
-      }
-
-      // Re-submit the Google Drive import
-      await uploadVideoFromGoogleDrive({
-        googleDriveFileId: video.google_drive_file_id,
-        googleDriveLink: video.google_drive_link,
-        title: video.title,
-        description: video.description
-      });
-
-      // Delete the failed record
-      await deleteUploadedVideo(videoId);
-      
-      toast.success('Video download restarted');
+      await retryGoogleDriveDownload(videoId);
+      toast.success('Video download restarted successfully');
       // Reload the videos list
       loadUploadedVideos();
     } catch (error) {
@@ -118,6 +111,60 @@ const UploadVideo = () => {
     } finally {
       setIsDeletingVideo(null);
     }
+  };
+
+  // Validate Google Drive link
+  const handleValidateGoogleDriveLink = async (link) => {
+    if (!link || !link.trim()) {
+      setLinkValidation(null);
+      return;
+    }
+
+    setIsValidatingLink(true);
+    try {
+      const result = await validateGoogleDriveLink(link.trim());
+      setLinkValidation(result);
+    } catch (error) {
+      setLinkValidation({
+        valid: false,
+        message: error.message || 'Failed to validate link'
+      });
+    } finally {
+      setIsValidatingLink(false);
+    }
+  };
+  // Handle Google Drive link change with validation
+  const handleGoogleDriveLinkChange = (e) => {
+    const link = e.target.value;
+    setGoogleDriveLink(link);
+    
+    // Clear previous validation
+    setLinkValidation(null);
+    
+    // If link is empty, don't validate
+    if (!link || !link.trim()) {
+      return;
+    }
+    
+    // Check basic format first
+    if (!validateGoogleDriveLink(link)) {
+      setLinkValidation({
+        valid: false,
+        message: 'Invalid Google Drive link format'
+      });
+      return;
+    }
+    
+    // Debounce API validation
+    const timeoutId = setTimeout(() => {
+      handleValidateGoogleDriveLink(link);
+    }, 1000);
+    
+    // Store timeout to clear it if needed
+    if (handleGoogleDriveLinkChange.timeoutId) {
+      clearTimeout(handleGoogleDriveLinkChange.timeoutId);
+    }
+    handleGoogleDriveLinkChange.timeoutId = timeoutId;
   };
 
   const handleVideoFileChange = (e) => {
@@ -478,28 +525,57 @@ const UploadVideo = () => {
 
                   {/* Google Drive Upload Form */}
                   {uploadType === 'google_drive' && (
-                    <form onSubmit={handleGoogleDriveUpload}>
-                      <div className="mb-3">
+                    <form onSubmit={handleGoogleDriveUpload}>                      <div className="mb-3">
                         <label htmlFor="googleDriveLink" className="form-label">
                           Google Drive Share Link *
                         </label>
                         <input
                           type="url"
-                          className="form-control"
+                          className={`form-control ${
+                            linkValidation 
+                              ? linkValidation.valid 
+                                ? 'is-valid' 
+                                : 'is-invalid'
+                              : ''
+                          }`}
                           id="googleDriveLink"
                           value={googleDriveLink}
-                          onChange={(e) => setGoogleDriveLink(e.target.value)}
+                          onChange={handleGoogleDriveLinkChange}
                           placeholder="https://drive.google.com/file/d/..."
                           required
                         />
+                        
+                        {/* Validation Feedback */}
+                        {isValidatingLink && (
+                          <div className="d-flex align-items-center mt-2 text-info">
+                            <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                            <small>Validating link...</small>
+                          </div>
+                        )}
+                        
+                        {linkValidation && (
+                          <div className={`mt-2 ${linkValidation.valid ? 'text-success' : 'text-danger'}`}>
+                            <small>
+                              <i className={`fas ${linkValidation.valid ? 'fa-check-circle' : 'fa-exclamation-circle'} me-1`}></i>
+                              {linkValidation.message}
+                            </small>
+                          </div>
+                        )}
+                        
                         <div className="form-text">
                           Make sure the file is shared publicly or with link access
                         </div>
-                      </div>
-
-                      <div className="alert alert-warning">
-                        <i className="fas fa-exclamation-triangle me-2"></i>
-                        <strong>Note:</strong> The Google Drive file must be publicly accessible or shared with "Anyone with the link" permission.
+                      </div><div className="alert alert-info mb-3">
+                        <h6 className="alert-heading">
+                          <i className="fab fa-google-drive me-2"></i>
+                          Google Drive Import Instructions
+                        </h6>
+                        <ul className="mb-0 small">
+                          <li>Make sure the file is shared with "Anyone with the link" permission</li>
+                          <li>Large files (200MB+) may take longer to process due to Google's virus scanning</li>
+                          <li>Supported formats: MP4, AVI, MOV, WMV, FLV, MKV</li>
+                          <li>If the download fails, you can use the retry button</li>
+                        </ul>
                       </div>
 
                       {isUploading && (
@@ -511,11 +587,15 @@ const UploadVideo = () => {
                         </div>
                       )}
 
-                      <div className="d-flex gap-2 mt-4">
-                        <button
+                      <div className="d-flex gap-2 mt-4">                        <button
                           type="submit"
                           className="btn btn-success"
-                          disabled={isUploading || !googleDriveLink.trim()}
+                          disabled={
+                            isUploading || 
+                            !googleDriveLink.trim() || 
+                            isValidatingLink ||
+                            (linkValidation && !linkValidation.valid)
+                          }
                         >
                           {isUploading ? (
                             <>
@@ -642,13 +722,17 @@ const UploadVideo = () => {
                               {video.description && (
                                 <p className="card-text small text-muted">{video.description}</p>
                               )}
-                              
-                              {/* Show error message if video processing failed */}
+                                {/* Show error message if video processing failed */}
                               {video.status === 'error' && video.error_message && (
                                 <div className="alert alert-danger alert-sm p-2 mb-2">
                                   <small>
                                     <i className="fas fa-exclamation-triangle me-1"></i>
-                                    {video.error_message}
+                                    <strong>Error:</strong> {video.error_message}
+                                    {video.upload_type === 'google_drive' && (
+                                      <div className="mt-1">
+                                        <em>Tip: Try using the retry button below, or ensure the Google Drive file is publicly accessible.</em>
+                                      </div>
+                                    )}
                                   </small>
                                 </div>
                               )}

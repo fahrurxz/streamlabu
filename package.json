@@ -30,7 +30,8 @@
     "multer": "^1.4.5-lts.1",
     "mysql2": "^3.2.0",
     "node-media-server": "^2.5.0",
-    "sequelize": "^6.30.0"
+    "sequelize": "^6.30.0",
+    "tough-cookie": "^5.1.2"
   },
   "devDependencies": {
     "concurrently": "^8.2.2",

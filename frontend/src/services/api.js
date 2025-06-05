@@ -240,6 +240,16 @@ export const uploadVideoFromGoogleDrive = async (uploadData) => {
   }
 };
 
+// Validate Google Drive link
+export const validateGoogleDriveLink = async (googleDriveLink) => {
+  try {
+    const response = await api.post('/streams/validate-google-drive-link', { googleDriveLink });
+    return response.data;
+  } catch (error) {
+    throw error.response ? error.response.data : error.message;
+  }
+};
+
 // Get all uploaded videos
 export const getUploadedVideos = async () => {
   try {
@@ -264,6 +274,16 @@ export const deleteUploadedVideo = async (videoId) => {
 export const getVideoStatus = async (videoId) => {
   try {
     const response = await api.get(`/streams/video-status/${videoId}`);
+    return response.data;
+  } catch (error) {
+    throw error.response ? error.response.data : error.message;
+  }
+};
+
+// Retry failed Google Drive download
+export const retryGoogleDriveDownload = async (videoId) => {
+  try {
+    const response = await api.post(`/streams/uploaded-videos/${videoId}/retry`);
     return response.data;
   } catch (error) {
     throw error.response ? error.response.data : error.message;
